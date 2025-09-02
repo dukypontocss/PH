@@ -67,27 +67,64 @@ async function carregarConfiguracoesPacotes() {
         if (!centrosResponse.ok) throw new Error('Erro ao carregar centros de custo');
 
         // Processar dados
-        const centrosCusto = await centrosResponse.json();
+        let response = await centrosResponse.json();
+        let centrosCusto = response;
+
+        // Verificar se a resposta está encapsulada em um objeto de resposta
+        if (response && !Array.isArray(response)) {
+            if (Array.isArray(response.data)) {
+                centrosCusto = response.data;
+            } else if (Array.isArray(response.centrosCusto)) {
+                centrosCusto = response.centrosCusto;
+            } else {
+                console.error('Formato inesperado de resposta:', response);
+                throw new Error('Formato de resposta inválido');
+            }
+        }
 
         // Atualizar select de centros de custo
         const centroSelect = document.getElementById('centroCusto');
-        if (centroSelect) {
-            centroSelect.innerHTML = '<option value="">Selecione um centro de custo...</option>';
-            centrosCusto.forEach(centro => {
-                if (centro.ativo) {
-                    const option = document.createElement('option');
-                    option.value = centro.nome;
-                    option.textContent = centro.nome;
-                    centroSelect.appendChild(option);
-                }
-            });
+        if (!centroSelect) {
+            console.error('Select de centro de custo não encontrado no DOM');
+            return;
         }
 
-        console.log('Configurações carregadas:', {
-            centrosCusto: centrosCusto.length
+        // Limpar opções existentes
+        centroSelect.innerHTML = '<option value="">Selecione um centro de custo...</option>';
+
+        // Verificar se centrosCusto é um array
+        if (!Array.isArray(centrosCusto)) {
+            console.error('Dados de centros de custo não são um array:', centrosCusto);
+            throw new Error('Formato de dados inválido');
+        }
+
+        // Filtrar apenas centros ativos e adicionar ao select
+        const centrosAtivos = centrosCusto.filter(centro => centro && centro.ativo !== false);
+        centrosAtivos.forEach(centro => {
+            const option = document.createElement('option');
+            option.value = centro.nome;
+            option.textContent = centro.nome;
+            centroSelect.appendChild(option);
         });
+
+        // Log da quantidade de centros carregados
+        console.log(`Carregados ${centrosAtivos.length} centros de custo ativos`);
+
+        // Se não houver centros ativos, mostrar mensagem
+        if (centrosAtivos.length === 0) {
+            const option = document.createElement('option');
+            option.value = "";
+            option.textContent = "Nenhum centro de custo cadastrado";
+            centroSelect.appendChild(option);
+            console.warn('Nenhum centro de custo ativo encontrado');
+        }
+
     } catch (error) {
-        console.error('Erro ao carregar configurações de pacotes:', error);
+        console.error('Erro ao carregar centros de custo:', error);
+        const centroSelect = document.getElementById('centroCusto');
+        if (centroSelect) {
+            centroSelect.innerHTML = '<option value="">Erro ao carregar centros de custo</option>';
+        }
         alert('Erro ao carregar centros de custo. Por favor, recarregue a página.');
     }
 }
@@ -187,16 +224,20 @@ async function inicializarSistemaRequisicoes() {
         // Carregar dados específicos do usuário
         carregarDadosUsuario();
         
-        // Carregar todos os dados necessários em paralelo
-        await Promise.all([
-            carregarItensDisponiveis(),
-            carregarConfiguracoesPacotes(),
-            carregarMeusPacotes()
-        ]);
+        // Load items and requisitions data
+        await carregarItensDisponiveis();
+        await carregarMeusPacotes();
         
-        // Se for admin, carregar pacotes pendentes
+        // Load admin-specific data if user is admin
         if (isUserAdmin()) {
             await carregarRequisicoesPendentes();
+        }
+        
+        // Only load centers of cost if we're on the configuration tab
+        const currentSection = document.querySelector('.content-section.active');
+        if (currentSection && currentSection.id === 'configuracoes') {
+            await carregarConfiguracoesPacotes();
+            await carregarCentrosCusto();
         }
         
         // Configurar interface baseada no tipo de usuário
@@ -761,9 +802,16 @@ function showSection(sectionId) {
         }
     }
     
+    // Load section-specific data
+    if (sectionId === 'configuracoes') {
+        // Load centers of cost configuration
+        carregarConfiguracoesPacotes();
+        carregarCentrosCusto();
+    }
+    
     // Fazer scroll para o topo da página com múltiplas opções para garantir compatibilidade
     setTimeout(() => {
-        // Método 1: scrollTo com smooth behavior
+        // Método 1: scrollTo with smooth behavior
         if (window.scrollTo) {
             window.scrollTo({
                 top: 0,
@@ -771,12 +819,12 @@ function showSection(sectionId) {
             });
         }
         
-        // Método 2: scrollTop como fallback
+        // Método 2: scrollTop as fallback
         if (document.documentElement.scrollTop !== undefined) {
             document.documentElement.scrollTop = 0;
         }
         
-        // Método 3: scrollTop do body como fallback adicional
+        // Método 3: scrollTop of body as additional fallback
         if (document.body.scrollTop !== undefined) {
             document.body.scrollTop = 0;
         }

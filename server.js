@@ -261,9 +261,9 @@ app.post('/api/unificar-itens', async (req, res) => {
 // Rotas para pacotes de requisições
 app.post('/api/pacotes', async (req, res) => {
     try {
-        const { userId, centroCusto, projeto, justificativa, itens } = req.body;
+        const { userId, centroCusto, justificativa, itens } = req.body;
         
-        if (!userId || !centroCusto || !projeto || !justificativa || !itens || !Array.isArray(itens) || itens.length === 0) {
+        if (!userId || !centroCusto || !justificativa || !itens || !Array.isArray(itens) || itens.length === 0) {
             return res.status(400).json({
                 success: false,
                 message: 'Dados inválidos para criar pacote'
@@ -839,7 +839,6 @@ app.put('/api/itens/:id', async (req, res) => {
                 nf = ?, 
                 quantidade = ?, 
                 minimo = ?, 
-                ideal = ?, 
                 infos = ?
             WHERE id = ?
         `;
@@ -854,7 +853,6 @@ app.put('/api/itens/:id', async (req, res) => {
             itemData.nf || itemExistente.nf,
             itemData.quantidade !== undefined ? itemData.quantidade : itemExistente.quantidade,
             itemData.minimo !== undefined ? itemData.minimo : itemExistente.minimo,
-            itemData.ideal !== undefined ? itemData.ideal : itemExistente.ideal,
             itemData.infos || itemExistente.infos,
             id
         ]);

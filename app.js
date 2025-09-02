@@ -163,7 +163,6 @@ document.getElementById('itemForm').addEventListener('submit', async function(e)
         nf: document.getElementById('nf').value.trim(),
         quantidade: parseInt(document.getElementById('quantidade').value),
         minimo: parseInt(document.getElementById('minimo').value),
-        ideal: parseInt(document.getElementById('ideal').value),
         infos: document.getElementById('infos').value.trim()
     };
     
@@ -241,7 +240,11 @@ function filtrarEstoque() {
         let nomeMatch = item.nome && item.nome.toLowerCase().includes(pesquisa);
         let wbsMatch = item.serie && item.serie.toLowerCase().includes(pesquisa);
         let status = 'ideal';
-        if (item.quantidade < item.minimo) status = 'abaixo-minimo';
+        if (item.quantidade < item.minimo) {
+            status = 'critico';
+        } else {
+            status = 'normal';
+        }
         let statusMatch = !statusFiltro || status === statusFiltro;
         // Se pesquisa estiver vazia, mostrar todos
         if (!pesquisa) return statusMatch;
@@ -261,11 +264,11 @@ function filtrarEstoque() {
     tbody.innerHTML = '';
     itensFiltrados.forEach(item => {
         const row = tbody.insertRow();
-        let status = 'Ideal';
-        let statusClass = 'status-ideal';
+        let status = 'Normal';
+        let statusClass = 'status-normal';
         if (item.quantidade < item.minimo) {
-            status = 'Abaixo do Mínimo';
-            statusClass = 'status-baixo';
+            status = 'Crítico';
+            statusClass = 'status-critico';
         }
         row.innerHTML = `
             <td>${item.nome}</td>
@@ -530,7 +533,7 @@ async function gerarRelatorioMovimentacao() {
             movFiltradas.forEach(mov => {
                 const data = new Date(mov.data).toLocaleDateString('pt-BR');
                 const hora = new Date(mov.data).toLocaleTimeString('pt-BR');
-                const tipoClass = mov.tipo === 'entrada' ? 'status-ideal' : 'status-baixo';
+                const tipoClass = mov.tipo === 'entrada' ? 'status-normal' : 'status-critico';
                 const tipoTexto = mov.tipo === 'entrada' ? 'Entrada' : 'Saída';
                 let centroCusto = '-';
                 if (mov.descricao && mov.descricao.toLowerCase().includes('requisição')) {
@@ -609,7 +612,6 @@ window.importarPlanilhaEPI = async function(event) {
                 'nf', 'Nota Fiscal',
                 'quantidade', 'Quantidade',
                 'minimo', 'Quantidade Mínima',
-                'ideal', 'Quantidade Ideal',
                 'infos', 'Informações Adicionais'
             ];
             for (const item of json) {
@@ -630,7 +632,6 @@ window.importarPlanilhaEPI = async function(event) {
                     nf: item.nf || item["Nota Fiscal"] || '',
                     quantidade: parseInt(item.quantidade || item.Quantidade || quantidadePlanilha || 0) || 0,
                     minimo: parseInt(item.minimo || item["Quantidade Mínima"] || 0) || 0,
-                    ideal: parseInt(item.ideal || item["Quantidade Ideal"] || 0) || 0,
                     infos: item.infos || item["Informações Adicionais"] || ''
                 };
                 // Adiciona todos os campos extras em infos (inclusive vazios)
@@ -713,7 +714,6 @@ function abrirModalEditarItem(itemId) {
     document.getElementById('editarNF').value = item.nf || '';
     document.getElementById('editarQuantidade').value = item.quantidade || 0;
     document.getElementById('editarMinimo').value = item.minimo || 0;
-    document.getElementById('editarIdeal').value = item.ideal || 0;
     document.getElementById('editarInfos').value = item.infos || '';
     const modal = document.getElementById('modalEditarItem');
     modal.style.display = 'flex';
@@ -741,7 +741,6 @@ document.getElementById('editarItemForm').addEventListener('submit', async funct
         nf: document.getElementById('editarNF').value.trim(),
         quantidade: parseInt(document.getElementById('editarQuantidade').value),
         minimo: parseInt(document.getElementById('editarMinimo').value),
-        ideal: parseInt(document.getElementById('editarIdeal').value),
         infos: document.getElementById('editarInfos').value.trim()
     };
     try {
@@ -1192,7 +1191,7 @@ function carregarMetricasDashboard() {
         .then(data => {
             const totalItens = data.length;
             const itensAbaixoMinimo = data.filter(item => item.quantidade < item.minimo).length;
-            const itensIdeal = data.filter(item => item.quantidade >= item.ideal).length;
+            const itensNormal = data.filter(item => item.quantidade >= item.minimo).length;
             
             // Atualizar cards de métricas
             const totalItensCard = document.getElementById('totalItensCard');
@@ -1201,7 +1200,7 @@ function carregarMetricasDashboard() {
             
             if (totalItensCard) totalItensCard.textContent = totalItens;
             if (itensAbaixoMinimoCard) itensAbaixoMinimoCard.textContent = itensAbaixoMinimo;
-            if (itensIdealCard) itensIdealCard.textContent = itensIdeal;
+            if (itensIdealCard) itensIdealCard.textContent = itensNormal;
             
             // Carregar retiradas de hoje
 
@@ -1260,7 +1259,7 @@ function carregarTopItems() {
                 
                 itensCriticos.forEach(item => {
                     const status = item.quantidade < item.minimo ? 'Crítico' : 'Normal';
-                    const statusClass = item.quantidade < item.minimo ? 'status-baixo' : 'status-ideal';
+                    const statusClass = item.quantidade < item.minimo ? 'status-critico' : 'status-normal';
                     
                     html += `
                         <tr>
@@ -1356,8 +1355,7 @@ function carregarGraficoStatus() {
             
             const total = data.length;
             const critico = data.filter(item => item.quantidade < item.minimo).length;
-            const baixo = data.filter(item => item.quantidade >= item.minimo && item.quantidade < item.ideal).length;
-            const ideal = data.filter(item => item.quantidade >= item.ideal).length;
+            const normal = data.filter(item => item.quantidade >= item.minimo).length;
             
             if (total > 0) {
                 const html = `
@@ -1368,12 +1366,8 @@ function carregarGraficoStatus() {
                                 <div style="font-size: 12px; color: #64748b;">Crítico</div>
                             </div>
                             <div>
-                                <div style="width: 60px; height: 60px; border-radius: 50%; background: #f59e0b; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin: 0 auto 8px;">${baixo}</div>
-                                <div style="font-size: 12px; color: #64748b;">Baixo</div>
-                            </div>
-                            <div>
-                                <div style="width: 60px; height: 60px; border-radius: 50%; background: #10b981; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin: 0 auto 8px;">${ideal}</div>
-                                <div style="font-size: 12px; color: #64748b;">Ideal</div>
+                                <div style="width: 60px; height: 60px; border-radius: 50%; background: #10b981; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin: 0 auto 8px;">${normal}</div>
+                                <div style="font-size: 12px; color: #64748b;">Normal</div>
                             </div>
                         </div>
                         <div style="font-size: 14px; color: #374151; font-weight: 500;">Total: ${total} itens</div>

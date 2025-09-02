@@ -186,7 +186,6 @@
                 nf TEXT,
                 quantidade INTEGER NOT NULL DEFAULT 0,
                 minimo INTEGER NOT NULL DEFAULT 0,
-                ideal INTEGER NOT NULL DEFAULT 0,
                 infos TEXT,
                 data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP
             )
@@ -407,13 +406,13 @@
     function inserirItem(item) {
         return new Promise((resolve, reject) => {
             const sql = `
-                INSERT INTO itens (nome, serie, descricao, origem, destino, valor, nf, quantidade, minimo, ideal, infos)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO itens (nome, serie, descricao, origem, destino, valor, nf, quantidade, minimo, infos)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
             
             db.run(sql, [
                 item.nome, item.serie, item.descricao, item.origem, item.destino,
-                item.valor, item.nf, item.quantidade, item.minimo, item.ideal, item.infos
+                item.valor, item.nf, item.quantidade, item.minimo, item.infos
             ], function(err) {
                 if (err) {
                     reject(err);
@@ -879,12 +878,11 @@
     // Função para criar pacote de requisições
     function criarPacoteRequisicao(pacote) {
         return new Promise((resolve, reject) => {
-            const sql = `INSERT INTO pacotes_requisicao (userId, centroCusto, projeto, justificativa) 
-                        VALUES (?, ?, ?, ?)`;
+            const sql = `INSERT INTO pacotes_requisicao (userId, centroCusto, justificativa) 
+                        VALUES (?, ?, ?)`;
             db.run(sql, [
                 pacote.userId,
                 pacote.centroCusto,
-                pacote.projeto,
                 pacote.justificativa
             ], function(err) {
                 if (err) reject(err);

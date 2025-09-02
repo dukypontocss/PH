@@ -791,7 +791,7 @@ body {
     color: #991b1b;
 }
 
-.status-baixo {
+.status-critico {
     background: #fee2e2;
     color: #991b1b;
     padding: 4px 8px;
@@ -800,7 +800,7 @@ body {
     font-weight: 500;
 }
 
-.status-ideal {
+.status-normal {
     background: #d1fae5;
     color: #065f46;
     padding: 4px 8px;
@@ -1878,7 +1878,7 @@ body {
 }
 
 /* Estados de status (compatibilidade com tags usadas no app.js) */
-.status-entrada, .status-ideal {
+.status-entrada, .status-normal {
     background: #d1fae5;
     color: #065f46;
     padding: 4px 8px;
@@ -1887,7 +1887,7 @@ body {
     font-weight: 600;
 }
 
-.status-saida, .status-baixo {
+.status-saida, .status-critico {
     background: #fee2e2;
     color: #991b1b;
     padding: 4px 8px;
