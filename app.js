@@ -253,7 +253,7 @@ function filtrarEstoque() {
     } else if (ordenacao === 'quantidade') {
         itensFiltrados.sort((a, b) => (b.quantidade || 0) - (a.quantidade || 0));
     } else if (ordenacao === 'status') {
-        const getStatus = x => (x.quantidade < x.minimo) ? 0 : (x.quantidade < x.ideal) ? 1 : 2;
+        const getStatus = x => (x.quantidade < x.minimo) ? 0 : 1;
         itensFiltrados.sort((a, b) => getStatus(a) - getStatus(b));
     }
     // Atualiza tabela
@@ -272,7 +272,6 @@ function filtrarEstoque() {
             <td>${item.serie || '-'}</td>
             <td>${item.quantidade}</td>
             <td>${item.minimo}</td>
-            <td>${item.ideal}</td>
             <td><span class="${statusClass}">${status}</span></td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick="abrirModalEstoque(${item.id});event.stopPropagation();">
@@ -379,23 +378,18 @@ async function gerarRelatorioEstoque() {
                             <th>Atual</th>
                             <th>Mínimo</th>
                             <th>Falta</th>
-                            <th>Ideal</th>
-                            <th>Para Ideal</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
         itensAbaixoMinimo.forEach(item => {
             const faltaMinimo = item.minimo - item.quantidade;
-            const faltaIdeal = item.ideal - item.quantidade;
             html += `
                 <tr>
                     <td>${item.nome}</td>
                     <td>${item.quantidade}</td>
                     <td>${item.minimo}</td>
                     <td>${faltaMinimo}</td>
-                    <td>${item.ideal}</td>
-                    <td>${faltaIdeal}</td>
                 </tr>
             `;
         });
@@ -819,9 +813,7 @@ window.exportarRelatorio = async function(tipo) {
                 'Código/WBS': sanitizar(item.serie || '-'),
                 'Quantidade Atual': item.quantidade,
                 'Quantidade Mínima': item.minimo,
-                'Quantidade Ideal': item.ideal,
-                'Status': sanitizar(item.quantidade < item.minimo ? 'Abaixo do Mínimo' : 
-                         item.quantidade < item.ideal ? 'Abaixo do Ideal' : 'Ideal'),
+                'Status': sanitizar(item.quantidade < item.minimo ? 'Abaixo do Mínimo' : 'Ideal'),
                 'Descrição': sanitizar(item.descricao || '-'),
                 'Origem': sanitizar(item.origem || '-'),
                 'Valor': item.valor || 0,

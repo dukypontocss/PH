@@ -801,12 +801,16 @@ async function carregarUsuariosAprovador() {
         const response = await fetch(`${API_URL}/usuarios`);
         if (!response.ok) throw new Error('Erro ao carregar usuários');
         
-        const usuarios = await response.json();
+        const usuariosResponse = await response.json();
+        const usuarios = Array.isArray(usuariosResponse)
+            ? usuariosResponse
+            : (usuariosResponse.usuarios || []);
+        const usuariosAdmins = usuarios.filter(u => u.userType === 'admin');
         const aprovadorSelect = document.getElementById('centroCustoAprovador');
         
         if (aprovadorSelect) {
             aprovadorSelect.innerHTML = '<option value="">Selecione um aprovador...</option>';
-            usuarios.forEach(usuario => {
+            usuariosAdmins.forEach(usuario => {
                 const option = document.createElement('option');
                 option.value = usuario.id;
                 option.textContent = usuario.name;
