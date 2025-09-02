@@ -233,10 +233,11 @@ async function inicializarSistemaRequisicoes() {
             await carregarRequisicoesPendentes();
         }
         
-        // Only load centers of cost if we're on the configuration tab
+        // Carregar centros de custo para o formulário de novo pacote
+        await carregarConfiguracoesPacotes();
+        // Se estiver na aba de configurações, também carregar a tabela
         const currentSection = document.querySelector('.content-section.active');
         if (currentSection && currentSection.id === 'configuracoes') {
-            await carregarConfiguracoesPacotes();
             await carregarCentrosCusto();
         }
         
@@ -807,6 +808,9 @@ function showSection(sectionId) {
         // Load centers of cost configuration
         carregarConfiguracoesPacotes();
         carregarCentrosCusto();
+    } else if (sectionId === 'novoPacote') {
+        // Garantir que o select de centro de custo esteja carregado ao abrir a criação
+        carregarConfiguracoesPacotes();
     }
     
     // Fazer scroll para o topo da página com múltiplas opções para garantir compatibilidade

@@ -261,7 +261,7 @@ app.post('/api/unificar-itens', async (req, res) => {
 // Rotas para pacotes de requisições
 app.post('/api/pacotes', async (req, res) => {
     try {
-        const { userId, centroCusto, justificativa, itens } = req.body;
+        const { userId, centroCusto, justificativa, itens, projeto: projetoBody } = req.body;
         
         if (!userId || !centroCusto || !justificativa || !itens || !Array.isArray(itens) || itens.length === 0) {
             return res.status(400).json({
@@ -291,7 +291,8 @@ app.post('/api/pacotes', async (req, res) => {
         const pacoteId = await db.criarPacoteRequisicao({
             userId,
             centroCusto,
-            projeto,
+            // Campo projeto foi removido do pacote; manter compatibilidade aceitando valor opcional
+            projeto: projetoBody || null,
             justificativa
         });
 
@@ -302,7 +303,7 @@ app.post('/api/pacotes', async (req, res) => {
                 itemId: item.id,
                 quantidade: item.quantidade,
                 centroCusto,
-                projeto,
+                projeto: projetoBody || null,
                 justificativa: `PACOTE: ${justificativa}`,
                 pacoteId
             });
