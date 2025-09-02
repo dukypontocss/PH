@@ -128,10 +128,6 @@ function showSection(sectionId) {
         atualizarControleEstoque().catch(error => {
             console.error('Erro ao atualizar controle de estoque:', error);
         });
-    } else if (sectionId === 'retirada') {
-        atualizarSelectRetirada().catch(error => {
-            console.error('Erro ao atualizar select de retirada:', error);
-        });
     } else if (sectionId === 'relatorio1') {
         gerarRelatorioEstoque().catch(error => {
             console.error('Erro ao gerar relatório de estoque:', error);
@@ -197,16 +193,13 @@ async function atualizarControleEstoque() {
     filtrarEstoque();
     
     let itensAbaixoMinimo = itens.filter(item => item.quantidade < item.minimo);
-    let itensAbaixoIdeal = itens.filter(item => item.quantidade < item.ideal);
     
     // Atualizar estatísticas
     const totalItensElement = document.getElementById('totalItens');
     const itensAbaixoMinimoElement = document.getElementById('itensAbaixoMinimo');
-    const itensAbaixoIdealElement = document.getElementById('itensAbaixoIdeal');
     
     if (totalItensElement) totalItensElement.textContent = itens.length;
     if (itensAbaixoMinimoElement) itensAbaixoMinimoElement.textContent = itensAbaixoMinimo.length;
-    if (itensAbaixoIdealElement) itensAbaixoIdealElement.textContent = itensAbaixoIdeal.length;
     
     // Atualizar alertas se existir o elemento
     const alertas = document.getElementById('alertas');
@@ -249,7 +242,6 @@ function filtrarEstoque() {
         let wbsMatch = item.serie && item.serie.toLowerCase().includes(pesquisa);
         let status = 'ideal';
         if (item.quantidade < item.minimo) status = 'abaixo-minimo';
-        else if (item.quantidade < item.ideal) status = 'abaixo-ideal';
         let statusMatch = !statusFiltro || status === statusFiltro;
         // Se pesquisa estiver vazia, mostrar todos
         if (!pesquisa) return statusMatch;
@@ -273,9 +265,6 @@ function filtrarEstoque() {
         let statusClass = 'status-ideal';
         if (item.quantidade < item.minimo) {
             status = 'Abaixo do Mínimo';
-            statusClass = 'status-baixo';
-        } else if (item.quantidade < item.ideal) {
-            status = 'Abaixo do Ideal';
             statusClass = 'status-baixo';
         }
         row.innerHTML = `
@@ -359,89 +348,12 @@ async function removerItem(itemId) {
 }
 
 // Retirada de itens
-async function atualizarSelectRetirada() {
-    await carregarDados();
-    
-    // Atualiza o select de itens
-    const select = document.getElementById('itemRetirada');
-    select.innerHTML = '<option value="">Selecione um item...</option>';
-    
-    itens.forEach(item => {
-        if (item.quantidade > 0) {
-            const option = document.createElement('option');
-            option.value = item.id;
-            option.textContent = `${item.nome} (Disponível: ${item.quantidade})`;
-            select.appendChild(option);
-        }
-    });
 
-    // Atualiza a lista de pacotes de requisição pendentes (para admins)
-    const pacotesList = document.getElementById('pacotesPendentes');
-    if (pacotesList) {
-        try {
-            const pacotes = await apiRequest('/pacotes/pendentes', 'GET');
-            pacotesList.innerHTML = '';
-            
-            if (pacotes.length === 0) {
-                pacotesList.innerHTML = '<p>Não há pacotes pendentes de aprovação.</p>';
-            } else {
-                pacotes.forEach(pacote => {
-                    const div = document.createElement('div');
-                    div.className = 'pacote-requisicao';
-                    div.innerHTML = `
-                        <h4>Pacote #${pacote.id}</h4>
-                        <p><strong>Centro de Custo:</strong> ${pacote.centroCusto}</p>
-                        <p><strong>Projeto:</strong> ${pacote.projeto}</p>
-                        <p><strong>Justificativa:</strong> ${pacote.justificativa}</p>
-                        <p><strong>Itens:</strong> ${pacote.total_itens || 0} • <strong>Total:</strong> ${pacote.total_quantidade || 0} unidades</p>
-                        <div class="acoes-pacote">
-                            <button onclick="aprovarPacote(${pacote.id})" class="btn btn-success">Aprovar</button>
-                            <button onclick="rejeitarPacote(${pacote.id})" class="btn btn-danger">Rejeitar</button>
-                        </div>
-                    `;
-                    pacotesList.appendChild(div);
-                });
-            }
-        } catch (error) {
-            console.error('Erro ao carregar pacotes:', error);
-            pacotesList.innerHTML = '<p class="error">Erro ao carregar pacotes pendentes.</p>';
-        }
-    }
-}
 
 // REMOVIDO: Funções obsoletas de criar pacote de requisição
 // Os pacotes agora são criados através da interface de requisições
 
-document.getElementById('retiradaForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const itemId = document.getElementById('itemRetirada').value;
-    const quantidade = parseInt(document.getElementById('quantidadeRetirada').value);
-    const destino = document.getElementById('destinoRetirada').value;
-    const observacao = document.getElementById('observacaoRetirada').value;
 
-    // Pega usuário logado do sessionStorage
-    let currentUser = null;
-    try {
-        currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    } catch (e) {}
-
-    try {
-        await apiRequest(`/itens/${itemId}/retirar`, 'POST', {
-            quantidade: quantidade,
-            destino: destino,
-            observacao: observacao,
-            usuario_id: currentUser && currentUser.id ? currentUser.id : null,
-            usuario_nome: currentUser && currentUser.name ? currentUser.name : null
-        });
-        
-        alert('Retirada realizada com sucesso!');
-        document.getElementById('retiradaForm').reset();
-        await atualizarSelectRetirada();
-    } catch (error) {
-        alert('Erro ao realizar operação: ' + error.message);
-    }
-});
 
 // Relatório de estoque
 async function gerarRelatorioEstoque() {
@@ -451,8 +363,7 @@ async function gerarRelatorioEstoque() {
 
     // Itens abaixo do mínimo
     const itensAbaixoMinimo = itens.filter(item => item.quantidade < item.minimo);
-    // Itens abaixo do ideal, mas não abaixo do mínimo
-    const itensAbaixoIdeal = itens.filter(item => item.quantidade < item.ideal && item.quantidade >= item.minimo);
+
 
     let html = '';
 
@@ -493,37 +404,7 @@ async function gerarRelatorioEstoque() {
         html += '<div class="alert alert-info">Nenhum item abaixo do estoque mínimo.</div>';
     }
 
-    // Seção: Itens abaixo do ideal
-    html += '<h3 style="margin-top:32px;">Itens Abaixo do Estoque Ideal</h3>';
-    if (itensAbaixoIdeal.length > 0) {
-        html += `
-            <div class="table-container">
-                <table class="modern-table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Atual</th>
-                            <th>Ideal</th>
-                            <th>Falta</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-        itensAbaixoIdeal.forEach(item => {
-            const faltaIdeal = item.ideal - item.quantidade;
-            html += `
-                <tr>
-                    <td>${item.nome}</td>
-                    <td>${item.quantidade}</td>
-                    <td>${item.ideal}</td>
-                    <td>${faltaIdeal}</td>
-                </tr>
-            `;
-        });
-        html += '</tbody></table></div>';
-    } else {
-        html += '<div class="alert alert-info">Nenhum item abaixo do estoque ideal.</div>';
-    }
+
 
     container.innerHTML = html;
 }
@@ -875,7 +756,7 @@ document.getElementById('editarItemForm').addEventListener('submit', async funct
         fecharModalEditarItem();
         await carregarDados();
         await atualizarControleEstoque();
-        await atualizarSelectRetirada();
+
         await gerarRelatorioEstoque();
         await gerarRelatorioMovimentacao();
     } catch (error) {
@@ -1016,7 +897,7 @@ async function aprovarPacote(pacoteId) {
         try {
             await apiRequest(`/pacotes/${pacoteId}/aprovar`, 'POST');
             alert('Pacote aprovado com sucesso!');
-            await atualizarSelectRetirada(); // Atualiza a lista de pacotes
+     // Atualiza a lista de pacotes
         } catch (error) {
             alert('Erro ao aprovar pacote: ' + error.message);
         }
@@ -1029,7 +910,7 @@ async function rejeitarPacote(pacoteId) {
         try {
             await apiRequest(`/pacotes/${pacoteId}/rejeitar`, 'POST', { motivo });
             alert('Pacote rejeitado com sucesso!');
-            await atualizarSelectRetirada(); // Atualiza a lista de pacotes
+     // Atualiza a lista de pacotes
         } catch (error) {
             alert('Erro ao rejeitar pacote: ' + error.message);
         }
@@ -1168,7 +1049,7 @@ window.importarBancoDados = async function(event) {
                 `;
                 await carregarDados();
                 await atualizarControleEstoque();
-                await atualizarSelectRetirada();
+        
                 await gerarRelatorioEstoque();
                 await gerarRelatorioMovimentacao();
             } catch (error) {
@@ -1224,7 +1105,7 @@ window.addEventListener('online', async function() {
     if (await tentarReconectar()) {
         // Atualizar interface após reconexão bem-sucedida
         await atualizarControleEstoque();
-        await atualizarSelectRetirada();
+
         
         if (statusBar) {
             statusBar.className = 'connected';
@@ -1331,7 +1212,7 @@ function carregarMetricasDashboard() {
             if (itensIdealCard) itensIdealCard.textContent = itensIdeal;
             
             // Carregar retiradas de hoje
-            carregarRetiradasHoje();
+
         })
         .catch(error => {
             console.error('Erro ao carregar métricas:', error);
@@ -1347,30 +1228,7 @@ function carregarMetricasDashboard() {
 }
 
 // Carregar retiradas de hoje
-function carregarRetiradasHoje() {
-    const hoje = new Date().toISOString().split('T')[0];
-    fetch(`/api/movimentacoes?data=${hoje}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            const retiradasHoje = data.filter(mov => mov.tipo === 'saida').length;
-            const retiradasHojeCard = document.getElementById('retiradasHojeCard');
-            if (retiradasHojeCard) {
-                retiradasHojeCard.textContent = retiradasHoje;
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao carregar retiradas:', error);
-            const retiradasHojeCard = document.getElementById('retiradasHojeCard');
-            if (retiradasHojeCard) {
-                retiradasHojeCard.textContent = '0';
-            }
-        });
-}
+
 
 // Carregar principais itens
 function carregarTopItems() {
@@ -1587,7 +1445,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
         statusBar.classList.remove('hidden');
         await carregarDados();
-        await atualizarSelectRetirada();
+
         await gerarRelatorioEstoque();
         await gerarRelatorioMovimentacao();
         loadDashboardData(); // Carregar dados do dashboard
@@ -1647,54 +1505,3 @@ window.onclick = function(event) {
 // ===== FUNÇÕES PARA RETIRADAS PENDENTES =====
 
 // Verificar e exibir retiradas pendentes
-async function verificarRetiradasPendentes() {
-    try {
-        const response = await fetch('/api/retiradas-pendentes');
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-            const quantidade = result.data.length;
-            const card = document.getElementById('retiradasPendentesCard');
-            const contador = document.getElementById('contadorRetiradasPendentes');
-            
-            if (quantidade > 0) {
-                card.style.display = 'block';
-                contador.textContent = quantidade;
-                contador.className = quantidade > 5 ? 'badge badge-danger' : 'badge badge-warning';
-            } else {
-                card.style.display = 'none';
-            }
-        }
-    } catch (error) {
-        console.error('Erro ao verificar retiradas pendentes:', error);
-        // Ocultar card se há erro
-        const card = document.getElementById('retiradasPendentesCard');
-        if (card) {
-            card.style.display = 'none';
-        }
-    }
-}
-
-// Adicionar verificação de retiradas pendentes ao inicializar
-document.addEventListener('DOMContentLoaded', function() {
-    // Verificar retiradas pendentes ao carregar a página
-    if (document.getElementById('retiradasPendentesCard')) {
-        verificarRetiradasPendentes();
-        
-        // Verificar periodicamente (a cada 30 segundos)
-        setInterval(verificarRetiradasPendentes, 30000);
-    }
-});
-
-// Adicionar verificação ao trocar para seção de retiradas
-const originalShowSection = window.showSection;
-if (originalShowSection) {
-    window.showSection = function(sectionId) {
-        originalShowSection(sectionId);
-        
-        // Se está na seção de retiradas, verificar pendentes
-        if (sectionId === 'retirada') {
-            setTimeout(verificarRetiradasPendentes, 100);
-        }
-    };
-}
