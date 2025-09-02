@@ -1152,7 +1152,7 @@ app.delete('/api/projetos/:id', async (req, res) => {
 // Rotas para gerenciar centros de custo
 app.post('/api/centros-custo', async (req, res) => {
     try {
-        const { nome, descricao } = req.body;
+        const { nome, descricao, aprovador_id } = req.body;
         
         if (!nome) {
             return res.status(400).json({
@@ -1161,7 +1161,7 @@ app.post('/api/centros-custo', async (req, res) => {
             });
         }
 
-        const centroCusto = await db.criarCentroCusto({ nome, descricao });
+        const centroCusto = await db.criarCentroCusto({ nome, descricao, aprovador_id });
         
         res.json({
             success: true,
@@ -1193,9 +1193,9 @@ app.get('/api/centros-custo', async (req, res) => {
 app.put('/api/centros-custo/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, descricao, ativo } = req.body;
+        const { nome, descricao, ativo, aprovador_id } = req.body;
         
-        await db.atualizarCentroCusto(id, { nome, descricao, ativo });
+        await db.atualizarCentroCusto(id, { nome, descricao, ativo, aprovador_id });
         
         res.json({
             success: true,

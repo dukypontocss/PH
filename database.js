@@ -265,6 +265,7 @@
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome TEXT NOT NULL UNIQUE,
                 descricao TEXT,
+                aprovador_id INTEGER,
                 ativo BOOLEAN DEFAULT 1,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
@@ -303,6 +304,16 @@
         db.run(`CREATE INDEX IF NOT EXISTS idx_centros_custo_nome ON centros_custo(nome)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_retiradas_pendentes_item_id ON retiradas_pendentes(item_id)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_retiradas_pendentes_status ON retiradas_pendentes(status)`);
+        
+        // Migração: Adicionar coluna aprovador_id à tabela centros_custo se não existir
+        db.all("PRAGMA table_info(centros_custo)", (err, columns) => {
+            if (!err) {
+                const colNames = columns.map(col => col.name);
+                if (!colNames.includes('aprovador_id')) {
+                    db.run("ALTER TABLE centros_custo ADD COLUMN aprovador_id INTEGER");
+                }
+            }
+        });
     });
 
     // Funções para usuários
@@ -889,10 +900,13 @@
                 SELECT 
                     p.*,
                     u.name as usuario_nome,
+                    aprovador.name as aprovador_nome,
                     COUNT(r.id) as total_itens,
                     SUM(r.quantidade) as total_quantidade
                 FROM pacotes_requisicao p
                 JOIN usuarios u ON p.userId = u.id
+                LEFT JOIN centros_custo cc ON p.centroCusto = cc.nome
+                LEFT JOIN usuarios aprovador ON cc.aprovador_id = aprovador.id
                 LEFT JOIN requisicoes r ON p.id = r.pacoteId
                 WHERE p.status = 'pendente'
                 GROUP BY p.id
@@ -1420,18 +1434,19 @@ function removerProjeto(id) {
 function criarCentroCusto(centroCusto) {
     return new Promise((resolve, reject) => {
         const sql = `
-            INSERT INTO centros_custo (nome, descricao)
-            VALUES (?, ?)
+            INSERT INTO centros_custo (nome, descricao, aprovador_id)
+            VALUES (?, ?, ?)
         `;
         
-        db.run(sql, [centroCusto.nome, centroCusto.descricao], function(err) {
+        db.run(sql, [centroCusto.nome, centroCusto.descricao, centroCusto.aprovador_id], function(err) {
             if (err) {
                 reject(err);
             } else {
                 resolve({
                     id: this.lastID,
                     nome: centroCusto.nome,
-                    descricao: centroCusto.descricao
+                    descricao: centroCusto.descricao,
+                    aprovador_id: centroCusto.aprovador_id
                 });
             }
         });
@@ -1440,7 +1455,13 @@ function criarCentroCusto(centroCusto) {
 
 function buscarCentrosCusto() {
     return new Promise((resolve, reject) => {
-        const sql = `SELECT * FROM centros_custo WHERE ativo = 1 ORDER BY nome`;
+        const sql = `
+            SELECT cc.*, u.name as aprovador_nome 
+            FROM centros_custo cc 
+            LEFT JOIN usuarios u ON cc.aprovador_id = u.id 
+            WHERE cc.ativo = 1 
+            ORDER BY cc.nome
+        `;
         
         db.all(sql, [], (err, rows) => {
             if (err) {
@@ -1456,11 +1477,11 @@ function atualizarCentroCusto(id, centroCusto) {
     return new Promise((resolve, reject) => {
         const sql = `
             UPDATE centros_custo 
-            SET nome = ?, descricao = ?, ativo = ?
+            SET nome = ?, descricao = ?, ativo = ?, aprovador_id = ?
             WHERE id = ?
         `;
         
-        db.run(sql, [centroCusto.nome, centroCusto.descricao, centroCusto.ativo, id], function(err) {
+        db.run(sql, [centroCusto.nome, centroCusto.descricao, centroCusto.ativo, centroCusto.aprovador_id, id], function(err) {
             if (err) {
                 reject(err);
             } else {
